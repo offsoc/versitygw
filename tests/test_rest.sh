@@ -603,3 +603,36 @@ test_file="test_file"
   run upload_part_without_upload_id "$BUCKET_ONE_NAME" "$test_file"
   assert_success
 }
+
+@test "REST - copy object w/invalid copy source" {
+  run setup_bucket_and_file "$BUCKET_ONE_NAME" "$test_file"
+  assert_success
+
+  run put_object "rest" "$TEST_FILE_FOLDER/$test_file" "$BUCKET_ONE_NAME" "$test_file"
+  assert_success
+
+  run copy_object_invalid_copy_source "$BUCKET_ONE_NAME"
+  assert_success
+}
+
+@test "REST - copy object w/copy source and payload" {
+  run setup_bucket_and_file "$BUCKET_ONE_NAME" "$test_file"
+  assert_success
+
+  run put_object "rest" "$TEST_FILE_FOLDER/$test_file" "$BUCKET_ONE_NAME" "$test_file"
+  assert_success
+
+  if ! result=$(COMMAND_LOG="$COMMAND_LOG" BUCKET_NAME="$BUCKET_ONE_NAME" OBJECT_KEY="${test_file}-copy" COPY_SOURCE="$BUCKET_ONE_NAME/$test_file" DATA_FILE="$TEST_FILE_FOLDER/$test_file" OUTPUT_FILE="$TEST_FILE_FOLDER/result.txt" ./tests/rest_scripts/copy_object.sh); then
+    log 2 "error copying object: $result"
+    return 1
+  fi
+  if [ "$result" != "400" ]; then
+    log 2 "expected '400', was '$result' $(cat "$TEST_FILE_FOLDER/result.txt")"
+    return 1
+  fi
+  log 5 "result: $(cat "$TEST_FILE_FOLDER/result.txt")"
+  if ! check_xml_element_contains "$TEST_FILE_FOLDER/result.txt" "InvalidArgument" "Error" "Code"; then
+    log 2 "error checking XML error code"
+    return 1
+  fi
+}

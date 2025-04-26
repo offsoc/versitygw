@@ -503,3 +503,22 @@ attempt_copy_object_to_directory_with_same_name() {
     return 1
   fi
 }
+
+copy_object_invalid_copy_source() {
+  if [ $# -ne 1 ]; then
+    log 2 "'copy_object_invalid_copy_source' requires bucket name"
+    return 1
+  fi
+  if ! result=$(COMMAND_LOG="$COMMAND_LOG" BUCKET_NAME="$BUCKET_ONE_NAME" OBJECT_KEY="dummy-copy" COPY_SOURCE="dummy" OUTPUT_FILE="$TEST_FILE_FOLDER/result.txt" ./tests/rest_scripts/copy_object.sh); then
+    log 2 "error copying object: $result"
+    return 1
+  fi
+  if [ "$result" != "400" ]; then
+    log 2 "expected '400', was '$result' $(cat "$TEST_FILE_FOLDER/result.txt")"
+    return 1
+  fi
+  if ! check_xml_element_contains "$TEST_FILE_FOLDER/result.txt" "InvalidArgument" "Error" "Code"; then
+    log 2 "error checking XML error code"
+    return 1
+  fi
+}
